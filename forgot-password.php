@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                     
                     // Create reset link
-                    $resetLink = "http://" . $_SERVER['HTTP_HOST'] . "/ncitad/reset-password.php?token=" . $token;
+                    $resetLink = "http://" . $_SERVER['HTTP_HOST'] . "/reset-password.php?token=" . $token;
                     
                     // Prepare email
                     $subject = "Password Reset Request - NCITAD";
