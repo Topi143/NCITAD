@@ -1,0 +1,177 @@
+# ============================================
+# NCITAD Git Ignore Configuration
+# ============================================
+
+# Sensitive Configuration Files
+# These contain database credentials and API keys
+includes/config.php
+includes/email_config.php
+
+# Environment Files
+.env
+.env.local
+.env.production
+.env.development
+*.env
+
+# Log Files
+*.log
+error_log
+php_error.log
+apache_error.log
+mysql_error.log
+
+# Temporary Files
+*.tmp
+*.temp
+*.cache
+~*
+*.swp
+*.swo
+
+# Database Dumps (keep template, ignore others)
+*.sql
+!ncitad.sql
+
+# Backup Files
+*.backup
+*.bak
+*.old
+backups/
+*.tar.gz
+*.zip
+
+# PHP Specific
+vendor/
+composer.lock
+composer.phar
+
+# Cache Directories
+cache/*
+tmp/*
+temp/*
+!cache/.gitkeep
+!tmp/.gitkeep
+!temp/.gitkeep
+
+# Upload Directories (if you have file uploads)
+uploads/*
+!uploads/.gitkeep
+assets/uploads/*
+!assets/uploads/.gitkeep
+
+# Session Files
+sessions/*
+!sessions/.gitkeep
+
+# Operating System Files
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# IDE and Editor Files
+# Visual Studio Code
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# PHPStorm / IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# NetBeans
+nbproject/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Atom
+.atom/
+
+# Eclipse
+.project
+.buildpath
+.settings/
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Node.js (if used for frontend build tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.npm
+
+# Build Directories
+build/
+dist/
+out/
+
+# Testing
+coverage/
+.phpunit.result.cache
+phpunit.xml
+
+# AWS / Cloud Deployment
+.elasticbeanstalk/
+.aws/
+*.pem
+*.ppk
+
+# SSL Certificates (never commit these!)
+*.key
+*.crt
+*.csr
+*.pem
+ssl/
+
+# Documentation Build Files
+docs/_build/
+site/
+
+# Misc
+*.pid
+.sass-cache/
+.php_cs.cache
+.php-cs-fixer.cache
+
+# Keep Important Files (override above rules)
+!.gitkeep
+!.htaccess
