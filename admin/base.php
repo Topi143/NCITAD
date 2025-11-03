@@ -212,6 +212,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <?php endif; ?>
             </a>
             
+            <a href="reports.php" class="group flex items-center px-4 py-3.5 rounded-xl transition-all duration-200 <?= $current_page === 'reports.php' ? 'bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50' : 'hover:bg-white/10' ?>">
+                <i class="bi bi-graph-up-arrow mr-3 text-lg <?= $current_page === 'reports.php' ? 'text-white' : 'text-blue-300 group-hover:text-white' ?>"></i>
+                <span class="font-medium <?= $current_page === 'reports.php' ? 'text-white' : 'text-gray-300 group-hover:text-white' ?>">Reports</span>
+                <?php if ($current_page === 'reports.php'): ?>
+                    <i class="bi bi-chevron-right ml-auto text-white"></i>
+                <?php endif; ?>
+            </a>
+            
             <div class="my-4 border-t border-white/10"></div>
             
             <p class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</p>

@@ -245,26 +245,23 @@ include 'base.php';
         <div class="flex flex-col md:flex-row gap-4">
             <!-- Search Box -->
             <div class="flex-1">
-                <form method="GET" action="concernlist.php" class="relative">
+                <div class="relative">
                     <i class="bi bi-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                     <input 
                         type="text" 
-                        name="search" 
+                        id="searchInput"
                         value="<?= htmlspecialchars($search) ?>"
                         placeholder="Search by ticket number or description..."
                         class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                    <?php if ($status_filter !== 'all'): ?>
-                        <input type="hidden" name="status" value="<?= htmlspecialchars($status_filter) ?>">
-                    <?php endif; ?>
-                </form>
+                </div>
             </div>
             
             <!-- Clear Filters Button -->
             <?php if (!empty($search) || $status_filter !== 'all'): ?>
-                <a href="concernlist.php" class="px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold flex items-center gap-2 transition-colors">
+                <button onclick="clearFilters()" class="px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold flex items-center gap-2 transition-colors">
                     <i class="bi bi-x-circle"></i> Clear Filters
-                </a>
+                </button>
             <?php endif; ?>
         </div>
     </div>
@@ -501,6 +498,52 @@ include 'base.php';
 </div>
 
 <script>
+let filterTimeout = null;
+
+// Dynamic search function
+function applyFilters() {
+    const search = document.getElementById('searchInput').value;
+    
+    const params = new URLSearchParams(window.location.search);
+    
+    // Update or remove search parameter
+    if (search) {
+        params.set('search', search);
+    } else {
+        params.delete('search');
+    }
+    
+    // Reset to page 1 when filtering
+    params.delete('page');
+    
+    const queryString = params.toString();
+    window.location.href = 'concernlist.php' + (queryString ? '?' + queryString : '');
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    window.location.href = 'concernlist.php';
+}
+
+// Auto-apply filters on search input
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    
+    // Debounced search input
+    searchInput.addEventListener('input', function() {
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(applyFilters, 800);
+    });
+    
+    // Apply filter on Enter key
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            clearTimeout(filterTimeout);
+            applyFilters();
+        }
+    });
+});
+
 // View concern details
 function viewConcernDetails(concernId) {
     const modal = document.getElementById('detailsModal');

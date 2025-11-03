@@ -25,7 +25,7 @@ $filter_conditions = [];
 $filter_params = [];
 
 if ($filter_facility > 0) {
-    $filter_conditions[] = "dep.facility_id = ?";
+    $filter_conditions[] = "fac.facility_id = ?";
     $filter_params[] = $filter_facility;
 }
 

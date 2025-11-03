@@ -311,10 +311,15 @@ include 'base.php';
                                     <?= $ticket['status'] ?>
                                 </span>
                             </div>
-                            <span class="text-xs text-gray-500">
-                                <i class="bi bi-calendar3"></i>
-                                <?= date('M d, Y', strtotime($ticket['archived_at'])) ?>
-                            </span>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-500">
+                                    <i class="bi bi-calendar3"></i>
+                                    <?= date('M d, Y', strtotime($ticket['archived_at'])) ?>
+                                </div>
+                                <div class="text-xs text-gray-400 mt-0.5">
+                                    <?= date('g:i A', strtotime($ticket['archived_at'])) ?>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- Description -->
@@ -342,7 +347,13 @@ include 'base.php';
                             <div class="flex items-start gap-2">
                                 <i class="bi bi-clock-history text-gray-400 mt-0.5"></i>
                                 <div class="text-gray-700">
-                                    <span class="font-semibold">Created:</span> <?= date('M d, Y g:i A', strtotime($ticket['created_at'])) ?>
+                                    <div><span class="font-semibold">Created:</span> <?= date('M d, Y g:i A', strtotime($ticket['created_at'])) ?></div>
+                                    <div class="mt-1">
+                                        <span class="font-semibold"><?= $ticket['status'] ?>:</span> 
+                                        <span class="text-<?= $ticket['status'] === 'Resolved' ? 'green' : ($ticket['status'] === 'Declined' ? 'red' : 'orange') ?>-600 font-medium">
+                                            <?= date('M d, Y g:i A', strtotime($ticket['archived_at'])) ?>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -691,6 +702,24 @@ function displayTicketModal(ticket) {
     };
     const config = statusConfig[ticket.status];
     
+    // Calculate duration
+    const createdDate = new Date(ticket.created_at);
+    const archivedDate = new Date(ticket.archived_at);
+    const durationMs = archivedDate - createdDate;
+    const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
+    const durationDays = Math.floor(durationHours / 24);
+    const remainingHours = durationHours % 24;
+    
+    let durationText = '';
+    if (durationDays > 0) {
+        durationText = `${durationDays} day${durationDays > 1 ? 's' : ''} ${remainingHours} hour${remainingHours !== 1 ? 's' : ''}`;
+    } else if (durationHours > 0) {
+        durationText = `${durationHours} hour${durationHours > 1 ? 's' : ''}`;
+    } else {
+        const durationMinutes = Math.floor(durationMs / (1000 * 60));
+        durationText = `${durationMinutes} minute${durationMinutes !== 1 ? 's' : ''}`;
+    }
+    
     modalContent.innerHTML = `
         <!-- Print Header (only visible when printing) -->
         <div class="print-header">
@@ -752,10 +781,15 @@ function displayTicketModal(ticket) {
                         <span class="font-medium">Created:</span>
                         <span>${new Date(ticket.created_at).toLocaleString()}</span>
                     </div>
-                    <div class="flex items-center gap-2 text-gray-700">
+                    <div class="flex items-center gap-2">
                         <i class="bi bi-${config.icon} text-${config.color}-500"></i>
-                        <span class="font-medium">${ticket.status}:</span>
-                        <span>${new Date(ticket.archived_at).toLocaleString()}</span>
+                        <span class="font-medium">Marked as ${ticket.status}:</span>
+                        <span class="text-${config.color}-700 font-semibold">${new Date(ticket.archived_at).toLocaleString()}</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg">
+                        <i class="bi bi-hourglass-split text-blue-600"></i>
+                        <span class="font-medium text-gray-700">Duration:</span>
+                        <span class="text-blue-700 font-semibold">${durationText}</span>
                     </div>
                 </div>
             </div>

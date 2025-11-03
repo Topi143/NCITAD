@@ -604,6 +604,10 @@ sudo systemctl enable apache2
 # Install PHP 8.1 and required extensions
 sudo apt install php8.1 php8.1-mysql php8.1-mbstring php8.1-xml php8.1-curl php8.1-zip php8.1-gd -y
 
+# NOTE: Ubuntu 24.04 may install PHP 8.3 by default
+# If you get "Unable to locate package php8.1", install PHP 8.3 instead:
+# sudo apt install php php-mysql php-mbstring php-xml php-curl php-zip php-gd -y
+
 # Install MySQL client (to connect to RDS)
 sudo apt install mysql-client -y
 
@@ -627,12 +631,35 @@ sudo nano /etc/apache2/sites-available/ncitad.conf
 
 Paste this configuration:
 
+**If you have a domain name:**
+
 ```apache
 <VirtualHost *:80>
     ServerAdmin admin@yourdomain.com
     DocumentRoot /var/www/ncitad
     ServerName yourdomain.com
     ServerAlias www.yourdomain.com
+
+    <Directory /var/www/ncitad>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/ncitad-error.log
+    CustomLog ${APACHE_LOG_DIR}/ncitad-access.log combined
+</VirtualHost>
+```
+
+**If you DON'T have a domain (using IP address only):**
+
+```apache
+<VirtualHost *:80>
+    ServerAdmin admin@localhost
+    DocumentRoot /var/www/ncitad
+
+    # No ServerName needed - will respond to IP address
+    # ServerName directive can be omitted when using IP only
 
     <Directory /var/www/ncitad>
         Options -Indexes +FollowSymLinks
@@ -657,6 +684,10 @@ sudo a2dissite 000-default.conf
 # Test configuration
 sudo apache2ctl configtest
 
+# Note: You may see "Warning: DocumentRoot [/var/www/ncitad] does not exist"
+# This is normal - we'll create this directory in Part 3: Application Deployment
+# The configuration syntax is still valid.
+
 # Restart Apache
 sudo systemctl restart apache2
 ```
@@ -664,11 +695,25 @@ sudo systemctl restart apache2
 ### Step 6: Configure PHP
 
 ```bash
-# Edit PHP configuration
-sudo nano /etc/php/8.1/apache2/php.ini
+# First, find your PHP version and configuration file location
+php -v
+php --ini
+
+# The output will show you the "Loaded Configuration File" path
+# Common paths:
+# - /etc/php/8.3/apache2/php.ini  (Ubuntu 24.04 with PHP 8.3)
+# - /etc/php/8.1/apache2/php.ini  (Ubuntu 22.04 with PHP 8.1)
+# - /etc/php/8.0/apache2/php.ini  (Ubuntu with PHP 8.0)
+
+# Edit PHP configuration for Apache (replace 8.3 with your actual PHP version)
+# Note: Use 'apache2' not 'cli' - the CLI version is for command-line PHP
+sudo nano /etc/php/8.3/apache2/php.ini
+
+# If you have PHP 8.3, use:
+# sudo nano /etc/php/8.3/apache2/php.ini
 ```
 
-Find and modify these lines:
+Find and modify these lines (use Ctrl+W to search in nano):
 
 ```ini
 upload_max_filesize = 20M
@@ -680,7 +725,9 @@ log_errors = On
 error_log = /var/log/php/error.log
 ```
 
-Save and exit.
+**Tip**: Press `Ctrl+W` in nano to search for each setting (e.g., search for "upload_max_filesize")
+
+Save and exit (Ctrl+X, then Y, then Enter).
 
 ```bash
 # Create PHP error log directory
@@ -851,8 +898,12 @@ sudo find /var/www/ncitad -type d -exec chmod 755 {} \;
 # Set file permissions
 sudo find /var/www/ncitad -type f -exec chmod 644 {} \;
 
-# Make uploads directory writable (if you have one)
+# Create uploads directory if it doesn't exist (for file uploads)
+sudo mkdir -p /var/www/ncitad/uploads
+
+# Make uploads directory writable
 sudo chmod -R 775 /var/www/ncitad/uploads
+sudo chown -R www-data:www-data /var/www/ncitad/uploads
 ```
 
 ### Step 5: Test Database Connection
@@ -881,17 +932,85 @@ mysql -h ncitad-database.xxxxxx.ap-southeast-1.rds.amazonaws.com -u admin -p nci
 
 ### Step 7: Test Your Application
 
-1. Get your EC2 Public IP from EC2 console
-2. Open browser: `http://[Your-EC2-Public-IP]`
-3. You should see your NCITAD login page
-4. Try logging in with existing credentials
-5. Test creating a ticket, managing users, etc.
+1. **Get your EC2 Public IP** from EC2 console
+2. **Open browser**: `http://[Your-EC2-Public-IP]`
+3. **Expected behavior**: The root URL will redirect to `login.php` - this is correct!
+4. **You should now see**: The NCITAD login page with username/password fields
+5. **Test login** with default credentials:
+   - Username: `admin`
+   - Password: `admin123`
+   - **⚠️ IMPORTANT**: Change this password immediately in production!
+6. **Test functionality**:
+   - ✅ Admin Dashboard loads
+   - ✅ View concerns/tickets
+   - ✅ Create new ticket (if logged in as user)
+   - ✅ Manage users and facilities
+   - ✅ Check that data from RDS database is displaying correctly
+
+**Common Issues at This Stage:**
+
+- **"Database connection error. Please contact administrator."**:
+  ```bash
+  # Check if config.php exists and has correct credentials
+  cat /var/www/ncitad/includes/config.php
+  
+  # Test database connection from EC2
+  mysql -h your-rds-endpoint.ap-southeast-1.rds.amazonaws.com -u admin -p
+  
+  # Check PHP error logs for detailed error
+  sudo tail -f /var/log/php/error.log
+  
+  # Verify RDS security group allows connection from EC2
+  # Go to AWS Console → RDS → Your database → Security group
+  ```
+  
+- **PHP code showing as plain text**: Install and enable PHP Apache module:
+  ```bash
+  sudo apt install libapache2-mod-php -y
+  sudo a2enmod php8.3  # or php8.1, or just php
+  sudo systemctl restart apache2
+  ```
+
+- **Blank white page**: Check PHP error logs (`sudo tail -f /var/log/php/error.log`)
+- **404 Not Found**: Verify Apache DocumentRoot points to `/var/www/ncitad`
+- **Permission denied errors**: Rerun permission commands from Step 4
 
 ---
 
-## Part 4: Domain and SSL Setup
+## Part 4: Domain and SSL Setup (Optional)
 
-### Step 1: Point Domain to EC2
+> **Note**: This section is optional. If you don't have a domain name, you can skip to [Part 5: Deployment Automation](#part-5-deployment-automation-with-git). Your application will work perfectly fine using just your EC2 IP address or Elastic IP.
+
+### Accessing Your Application Without a Domain
+
+If you're not using a domain name:
+
+1. **Get your EC2 Public IP** from the EC2 console
+2. **Access your application**: `http://[Your-EC2-Public-IP]`
+3. **Consider an Elastic IP** (recommended) so your IP doesn't change when you stop/start the instance
+
+**To allocate an Elastic IP:**
+
+```bash
+# In AWS Console:
+1. Go to EC2 → Elastic IPs
+2. Click "Allocate Elastic IP address"
+3. Click "Allocate"
+4. Select the new Elastic IP
+5. Actions → Associate Elastic IP address
+6. Select your NCITAD-WebServer instance
+7. Click "Associate"
+```
+
+Your application will now be accessible at: `http://[Your-Elastic-IP]`
+
+**Note about HTTPS without a domain**: SSL certificates require a domain name. If you're using just an IP address, you'll only have HTTP access (not HTTPS). For production use with sensitive data, a domain and SSL certificate is highly recommended.
+
+---
+
+### If You Have a Domain Name
+
+##### Step 1: Point Domain to EC2
 
 **If you have a domain (e.g., ncitad.com):**
 
@@ -911,24 +1030,11 @@ mysql -h ncitad-database.xxxxxx.ap-southeast-1.rds.amazonaws.com -u admin -p nci
 3. Update nameservers at your registrar
 4. Create A record pointing to EC2 IP
 
-### Step 2: Allocate Elastic IP (Recommended)
+#### Step 2: Update Apache Configuration (Domain Only)
 
-**Why?** EC2 public IP changes if you stop/start instance. Elastic IP is permanent.
+If you're using a domain, you already configured this in Part 2, Step 5. Just verify the ServerName matches your domain.
 
-```bash
-# On EC2 console
-1. Go to EC2 → Elastic IPs
-2. Click "Allocate Elastic IP address"
-3. Click "Allocate"
-4. Select the new Elastic IP
-5. Actions → Associate Elastic IP address
-6. Select your instance
-7. Click "Associate"
-```
-
-Update your domain A record with the new Elastic IP.
-
-### Step 3: Install SSL Certificate (Let's Encrypt - Free)
+#### Step 3: Install SSL Certificate (Let's Encrypt - Free)
 
 ```bash
 # On your EC2 server

@@ -218,6 +218,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
+    // Delete Facility
+    if (isset($_POST['action']) && $_POST['action'] === 'delete_facility') {
+        $facilityId = (int)$_POST['facility_id'];
+        
+        try {
+            if ($facilityId <= 0) {
+                throw new Exception("Invalid facility ID");
+            }
+            
+            // Check if facility has devices
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM devices WHERE facility_id = ?");
+            $stmt->execute([$facilityId]);
+            $deviceCount = $stmt->fetchColumn();
+            
+            if ($deviceCount > 0) {
+                throw new Exception("Cannot delete facility with existing devices. Please delete all devices first.");
+            }
+            
+            // Delete facility
+            $stmt = $pdo->prepare("DELETE FROM facilities WHERE facility_id = ?");
+            $stmt->execute([$facilityId]);
+            
+            $_SESSION['success'] = "Facility deleted successfully";
+            header("Location: facilities_devices.php");
+            exit();
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Error: " . $e->getMessage();
+            header("Location: facilities_devices.php?facility=$facilityId");
+            exit();
+        }
+    }
+    
+    // Delete Device
+    if (isset($_POST['action']) && $_POST['action'] === 'delete_device') {
+        $deviceId = (int)$_POST['device_id'];
+        $facilityId = (int)$_POST['facility_id'];
+        
+        try {
+            if ($deviceId <= 0) {
+                throw new Exception("Invalid device ID");
+            }
+            
+            // Check if device is used in any concerns
+            if (isDeviceUsed($pdo, $deviceId)) {
+                throw new Exception("Cannot delete device that is associated with existing concerns");
+            }
+            
+            // Delete device
+            $stmt = $pdo->prepare("DELETE FROM devices WHERE device_id = ?");
+            $stmt->execute([$deviceId]);
+            
+            $_SESSION['success'] = "Device deleted successfully";
+            header("Location: facilities_devices.php?facility=$facilityId");
+            exit();
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Error: " . $e->getMessage();
+            header("Location: facilities_devices.php?facility=$facilityId");
+            exit();
+        }
+    }
+    
     header("Location: facilities_devices.php");
     exit();
 }
@@ -369,6 +430,10 @@ include 'base.php';
                                     class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg transition-all text-sm font-semibold shadow-md flex items-center gap-1">
                                 <i class="bi bi-pencil"></i> Edit
                             </button>
+                            <button onclick="confirmDeleteFacility(<?= $selected_facility_data['facility_id'] ?>, '<?= htmlspecialchars($selected_facility_data['facility_name'], ENT_QUOTES) ?>')"
+                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-all text-sm font-semibold shadow-md flex items-center gap-1">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
                         </div>
                     </div>
                     
@@ -394,10 +459,16 @@ include 'base.php';
                                                     <p class="text-xs text-gray-500">ID: <?= $device['device_id'] ?></p>
                                                 </div>
                                             </div>
-                                            <button onclick="openEditDeviceModal(<?= $device['device_id'] ?>, '<?= htmlspecialchars($device['device_name'], ENT_QUOTES) ?>', <?= $selected_facility ?>)"
-                                                    class="text-blue-600 hover:text-blue-700 text-sm">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
+                                            <div class="flex items-center gap-1">
+                                                <button onclick="openEditDeviceModal(<?= $device['device_id'] ?>, '<?= htmlspecialchars($device['device_name'], ENT_QUOTES) ?>', <?= $selected_facility ?>)"
+                                                        class="text-blue-600 hover:text-blue-700 text-sm p-1">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button onclick="confirmDeleteDevice(<?= $device['device_id'] ?>, '<?= htmlspecialchars($device['device_name'], ENT_QUOTES) ?>', <?= $selected_facility ?>)"
+                                                        class="text-red-600 hover:text-red-700 text-sm p-1">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                         
                                         <?php if ($device['concern_count'] > 0): ?>
@@ -582,6 +653,81 @@ include 'base.php';
     </div>
 </div>
 
+<!-- Delete Facility Confirmation Modal -->
+<div id="deleteFacilityModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div class="bg-red-600 text-white px-4 py-3 rounded-t-xl">
+            <h3 class="text-lg font-bold flex items-center">
+                <i class="bi bi-exclamation-triangle-fill mr-2"></i>Delete Facility
+            </h3>
+        </div>
+        <form method="post" class="p-4">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="action" value="delete_facility">
+            <input type="hidden" name="facility_id" id="deleteFacilityId">
+            
+            <div class="mb-4">
+                <p class="text-gray-700 mb-2">Are you sure you want to delete this facility?</p>
+                <p class="text-sm font-semibold text-gray-900 bg-gray-100 p-3 rounded-lg" id="deleteFacilityName"></p>
+                <p class="text-sm text-red-600 mt-3">
+                    <i class="bi bi-exclamation-triangle mr-1"></i>
+                    This action cannot be undone. The facility must have no devices to be deleted.
+                </p>
+            </div>
+            
+            <div class="flex justify-end gap-2">
+                <button type="button" 
+                        class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50" 
+                        data-modal-close>
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium">
+                    <i class="bi bi-trash mr-1"></i> Delete Facility
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Device Confirmation Modal -->
+<div id="deleteDeviceModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div class="bg-red-600 text-white px-4 py-3 rounded-t-xl">
+            <h3 class="text-lg font-bold flex items-center">
+                <i class="bi bi-exclamation-triangle-fill mr-2"></i>Delete Device
+            </h3>
+        </div>
+        <form method="post" class="p-4">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="action" value="delete_device">
+            <input type="hidden" name="device_id" id="deleteDeviceId">
+            <input type="hidden" name="facility_id" id="deleteDeviceFacilityId">
+            
+            <div class="mb-4">
+                <p class="text-gray-700 mb-2">Are you sure you want to delete this device?</p>
+                <p class="text-sm font-semibold text-gray-900 bg-gray-100 p-3 rounded-lg" id="deleteDeviceName"></p>
+                <p class="text-sm text-red-600 mt-3">
+                    <i class="bi bi-exclamation-triangle mr-1"></i>
+                    This action cannot be undone. Devices associated with concerns cannot be deleted.
+                </p>
+            </div>
+            
+            <div class="flex justify-end gap-2">
+                <button type="button" 
+                        class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50" 
+                        data-modal-close>
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium">
+                    <i class="bi bi-trash mr-1"></i> Delete Device
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 // Modal functions
 function openAddFacilityModal() {
@@ -604,6 +750,19 @@ function openEditDeviceModal(id, name, facilityId) {
     document.getElementById('editDeviceName').value = name;
     document.getElementById('editDeviceFacilityId').value = facilityId;
     document.getElementById('editDeviceModal').classList.remove('hidden');
+}
+
+function confirmDeleteFacility(id, name) {
+    document.getElementById('deleteFacilityId').value = id;
+    document.getElementById('deleteFacilityName').textContent = name;
+    document.getElementById('deleteFacilityModal').classList.remove('hidden');
+}
+
+function confirmDeleteDevice(id, name, facilityId) {
+    document.getElementById('deleteDeviceId').value = id;
+    document.getElementById('deleteDeviceName').textContent = name;
+    document.getElementById('deleteDeviceFacilityId').value = facilityId;
+    document.getElementById('deleteDeviceModal').classList.remove('hidden');
 }
 
 // Close modals
