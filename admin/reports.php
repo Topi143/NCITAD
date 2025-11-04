@@ -180,12 +180,11 @@ include 'base.php';
             <div class="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
                 <div class="text-4xl font-bold text-green-600">
                     <?php 
-                    $total_all = $total_concerns + $total_archived;
-                    echo $total_all > 0 ? round(($resolved_concerns / $total_all) * 100) : 0;
+                    echo $total_archived > 0 ? round(($resolved_concerns / $total_archived) * 100) : 0;
                     ?>%
                 </div>
                 <div class="text-sm text-gray-700 mt-2 font-medium">Resolution Rate</div>
-                <div class="text-xs text-gray-500 mt-1"><?= $resolved_concerns ?> of <?= $total_all ?> tickets</div>
+                <div class="text-xs text-gray-500 mt-1"><?= $resolved_concerns ?> of <?= $total_archived ?> archived</div>
             </div>
             
             <div class="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">

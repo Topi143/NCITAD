@@ -363,7 +363,7 @@ include 'base.php';
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 px-4 pb-4">
     
     <!-- Pending Panel -->
-    <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col" style="height: calc(100vh - 315px);">
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col" style="height: calc(100vh - 3 15px);">
         <div class="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
             <div class="flex items-center gap-2">
                 <i class="bi bi-hourglass-split text-lg"></i>
