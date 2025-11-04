@@ -14,7 +14,7 @@ $concern_id = $_GET['id'] ?? 0;
 $user_id = $_SESSION['user_id'];
 
 try {
-    // Get concern details (ensure it belongs to the current user)
+    // First, try to get concern from active concerns table
     $stmt = $pdo->prepare("
         SELECT c.*, u.faculty_name, u.email
         FROM concerns c
@@ -24,22 +24,47 @@ try {
     $stmt->execute([$concern_id, $user_id]);
     $concern = $stmt->fetch();
 
+    $is_archived = false;
+    
+    // If not found in active concerns, check concern_history
+    if (!$concern) {
+        $stmt = $pdo->prepare("
+            SELECT h.concern_id, h.user_id, h.description, h.status, 
+                   h.created_at, h.updated_at, h.resolution_feedback,
+                   h.faculty_name, h.email
+            FROM concern_history h
+            WHERE h.concern_id = ? AND h.user_id = ?
+        ");
+        $stmt->execute([$concern_id, $user_id]);
+        $concern = $stmt->fetch();
+        $is_archived = true;
+    }
+
     if (!$concern) {
         echo json_encode(['success' => false, 'message' => 'Concern not found']);
         exit();
     }
 
     // Get associated devices
-    $stmt = $pdo->prepare("
-        SELECT d.device_name, f.facility_name
-        FROM concern_devices cd
-        JOIN devices d ON cd.device_id = d.device_id
-        JOIN facilities f ON d.facility_id = f.facility_id
-        WHERE cd.concern_id = ?
-        ORDER BY f.facility_name, d.device_name
-    ");
-    $stmt->execute([$concern_id]);
-    $devices = $stmt->fetchAll();
+    if ($is_archived) {
+        // For archived concerns, parse devices from JSON if available
+        $devices = [];
+        if (isset($concern['devices']) && !empty($concern['devices'])) {
+            $devices = json_decode($concern['devices'], true) ?: [];
+        }
+    } else {
+        // For active concerns, get from concern_devices table
+        $stmt = $pdo->prepare("
+            SELECT d.device_name, f.facility_name
+            FROM concern_devices cd
+            JOIN devices d ON cd.device_id = d.device_id
+            JOIN facilities f ON d.facility_id = f.facility_id
+            WHERE cd.concern_id = ?
+            ORDER BY f.facility_name, d.device_name
+        ");
+        $stmt->execute([$concern_id]);
+        $devices = $stmt->fetchAll();
+    }
 
     // Status styling
     $status_styles = [

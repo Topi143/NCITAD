@@ -694,10 +694,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function handleAction(ticketId, action) {
-    if (!confirm(`Are you sure you want to ${action} this ticket?`)) {
-        return;
-    }
-    
     const formData = new FormData();
     formData.append('concern_id', ticketId);
     formData.append('action', action);
